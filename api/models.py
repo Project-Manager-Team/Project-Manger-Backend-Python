@@ -1,18 +1,26 @@
-from django.db import models
-
-# Create your models here.
-from django.db import models
 from django.contrib.auth.models import User
+from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 # Create model Project
 class Project(models.Model):
+    class ProjectType(models.TextChoices):
+        PROJECT = "proj", _("Project")
+        TASK = "task", _("Task")
+
     title = models.CharField(max_length=100)
     description = models.CharField(max_length=1000)
+
     time_init = models.DateTimeField(auto_now_add=True)
     time_start = models.DateTimeField()
     time_end = models.DateTimeField()
-    type = models.BooleanField(default=False)  # False: Task , True: Project
+    
+    type = models.CharField(
+        max_length=4,
+        choices=ProjectType.choices,
+        default=ProjectType.TASK,
+    )
 
     # Create link to User Model
     owner_user = models.ForeignKey(
@@ -31,4 +39,4 @@ class Project(models.Model):
     )
 
     def __str__(self):
-        return f"{self.id} - {self.title} - {"Project" if type else "Task"}"
+        return f"{self.id} - {self.title} - {self.type}"
