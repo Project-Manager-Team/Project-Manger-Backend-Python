@@ -1,9 +1,5 @@
 # Project-Manger-Backend-Python
 
-#### install dependencies
-```bash
-pip install -r requirements.txt
-```
 
 #### Clone to local machine
 ```bash
@@ -18,4 +14,8 @@ python -m venv name_env
 #### Activate virtual enviroment
 ```bash
 name_env\script\activate
+```
+#### install dependencies
+```bash
+pip install -r requirements.txt
 ```
