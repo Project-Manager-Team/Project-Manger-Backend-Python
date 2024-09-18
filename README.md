@@ -15,7 +15,7 @@ python -m venv name_env
 ```bash
 name_env\script\activate
 ```
-#### install dependencies
+#### Install dependencies
 ```bash
 pip install -r requirements.txt
 ```
