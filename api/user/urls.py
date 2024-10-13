@@ -5,7 +5,6 @@ from rest_framework_simplejwt.views import (
 )
 
 from .views import UserRegister
-
 urlpatterns = [
     path("register/", UserRegister.as_view()),
     path("token/", TokenObtainPairView.as_view()),

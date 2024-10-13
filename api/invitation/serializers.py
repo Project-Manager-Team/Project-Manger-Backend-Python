@@ -1,8 +1,5 @@
-from django.contrib.auth.models import User
-from .models import *
+from ..models import Invitation
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError
-from django.contrib.auth import authenticate
 
 
 # Quá trình chạy của LoginSerializer
@@ -23,53 +20,6 @@ from django.contrib.auth import authenticate
 # - attrs là một dictionary chứa dữ liệu của request
 
 
-class LoginSerializer(serializers.Serializer):
-
-    username = serializers.CharField(required=True)
-    password = serializers.CharField(required=True, write_only=True)
-
-    def validate(self, attrs):
-        username = attrs.get('username')
-        password = attrs.get('password')
-
-        user = authenticate(username=username, password=password)
-        if not user:
-            raise serializers.ValidationError(
-                'username or password is incorrect')
-
-        attrs['user'] = user
-        return attrs
-
-
-class RegisterSerializer(serializers.Serializer):
-    username = serializers.CharField(required=True)
-    password = serializers.CharField(required=True)
-    email = serializers.CharField(required=True)
-
-    def validate(self, attrs):
-        username = attrs.get('username')
-        password = attrs.get('password')
-        email = attrs.get('email')
-
-        if User.objects.filter(username=username):
-            raise ValidationError("username is exists")
-
-        user = {
-            "username": username,
-            "password": password,
-            "email": email
-        }
-        attrs['user'] = user
-        return attrs
-
-    def create(self, validated_data):
-        user = User.objects.create_user(
-            username=validated_data['username'],
-            password=validated_data['password'],
-            email=validated_data['email']
-        )
-        return user
-
 # serializers là một module của rest_framework, nó giúp chúng ta chuyển đổi dữ liệu từ model sang dạng json và ngược lại
 # 1 serializer sẽ tương ứng với một model
 # 1 serializer sẽ tạo ra một api endpoint để thao tác với model tương ứng
@@ -77,13 +27,6 @@ class RegisterSerializer(serializers.Serializer):
 # fields in serializer là các trường của model mà chúng ta muốn hiển thị
 # fields in serializer sẽ tạo ra các trường trong json response
 # fields in serializer sẽ tạo ra các trường trong json request
-
-
-class ProjectSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Project
-        fields = ['title', 'description', 'time_start',
-                  'time_end', 'type', 'owner', 'manager', 'parent']
 
 
 class InvitationSerializer(serializers.ModelSerializer):

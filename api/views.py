@@ -71,47 +71,7 @@ from django.db.models import Q
 # 7. Nếu request hợp lệ, hàm is_valid() sẽ trả về một dictionary chứa dữ liệu đã được xử lý
 
 
-class LoginView(APIView):
-    def post(self, request):
-        serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
 
-        user = serializer.validated_data['user']
-        refresh = RefreshToken.for_user(user)
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }, status=status.HTTP_200_OK)
-
-
-# front end xử lý refresh token như thế nào?
-# - front end sẽ lưu trữ refresh token vào local storage
-# - front end sẽ gửi refresh token lên server để lấy access token
-# - front end sẽ gửi access token lên server để xác thực user
-# - front end sẽ gửi access token lên server để lấy dữ liệu từ server
-
-# Tôi muốn khi tạo ra 1 user
-class RegisterView(APIView):
-    def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        refresh = RefreshToken.for_user(user)
-        Project.objects.create(
-            title=f"{user.username.title()} Project",  # Tiêu đề project
-            description="This is a personal project root.",  # Mô tả project
-            time_start=None,  # Có thể để None hoặc đặt giá trị mặc định khác
-            time_end=None,    # Có thể để None hoặc đặt giá trị mặc định khác
-            # Hoặc sử dụng Project.ProjectType.PERSONAL nếu bạn có loại này
-            type="personal",
-            owner=user,  # Người sở hữu là user vừa đăng ký
-            parent=None  # Đây là root project nên parent là None
-        )
-
-        return Response({
-            "refresh": str(refresh),
-            "access": str(refresh.access_token)
-        }, status=status.HTTP_201_CREATED)
 
 
 # class InvitationViewSet(viewsets.ModelViewSet):
@@ -128,48 +88,6 @@ class RegisterView(APIView):
 #         return serializer.save(owner=self.request.user)
 
 
-class PersonalProjectViewSet(viewsets.ModelViewSet):
-    queryset = Project.objects.all()
-    serializer_class = ProjectSerializer
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
-
-    def get_queryset(self):
-        user = self.request.user
-        # Tất cả các child và user
-        parent = self.request.query_params.get("parent")
-        root = self.queryset.get(type="personal", owner=user)
-        manage_project = self.queryset.filter(manager=user)
-
-        if parent is not None:
-            all_child_project = root.get_descendants()
-            for project in manage_project:
-                all_child_project |= project.get_descendants(include_self=True)
-            return all_child_project.filter(parent=parent)
-        return root.get_children() | manage_project
-
-    def perform_create(self, serializer):
-        user = self.request.user
-        # Tất cả các child và user
-        parent = self.request.data.get("parent")
-        root = self.queryset.get(type="personal", owner=user)
-        descendants = root.get_descendants()
-        if parent is not None:
-            if descendants.filter(id=parent).exists():
-                return serializer.save(owner=user, parent=descendants.get(id=parent))
-            raise serializers.ValidationError("parent is not exists")
-        raise serializers.ValidationError('parent: This field is required.')
 
 
-class InvitationViewSet(viewsets.ModelViewSet):
-    queryset = Invitation.objects.all()
-    serializer_class = InvitationSerializer
-    authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
-        user = self.request.user
-        return self.queryset.filter(receiver=user)
-
-    def perform_create(self, serializer):
-        return serializer.save(sender=self.request.user)
