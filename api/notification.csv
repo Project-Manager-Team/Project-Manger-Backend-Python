@@ -1,0 +1,21 @@
+id,title,description,status,owner_user_id
+1,"Notification 1","This is description for notification 1",0,1
+2,"Notification 2","This is description for notification 2",0,2
+3,"Notification 3","This is description for notification 3",1,3
+4,"Notification 4","This is description for notification 4",0,1
+5,"Notification 5","This is description for notification 5",1,2
+6,"Notification 6","This is description for notification 6",0,3
+7,"Notification 7","This is description for notification 7",0,1
+8,"Notification 8","This is description for notification 8",1,2
+9,"Notification 9","This is description for notification 9",0,3
+10,"Notification 10","This is description for notification 10",1,1
+11,"Notification 11","This is description for notification 11",0,2
+12,"Notification 12","This is description for notification 12",0,3
+13,"Notification 13","This is description for notification 13",1,1
+14,"Notification 14","This is description for notification 14",0,2
+15,"Notification 15","This is description for notification 15",0,3
+16,"Notification 16","This is description for notification 16",1,1
+17,"Notification 17","This is description for notification 17",0,2
+18,"Notification 18","This is description for notification 18",0,3
+19,"Notification 19","This is description for notification 19",1,1
+20,"Notification 20","This is description for notification 20",0,2
