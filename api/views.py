@@ -34,7 +34,6 @@ from django.db.models import Q
 #     authentication_classes = [JWTAuthentication]
 #     permission_classes = [IsAuthenticated]
 
-<< << << < HEAD
 #     def get_queryset(self):
 #         user = self.request.user
 #         print(user)
@@ -45,11 +44,6 @@ from django.db.models import Q
 #     # - perform_create() sẽ trả về object vừa tạo
 #     # - object vừa tạo sẽ được trả về cho client
 #     # - client sẽ nhận được object vừa tạo và hiển thị lên trang web
-== == == =
-if username := request.user.username:
-    message = f"Hello, your username is {username}."
->>>>>> > caa5807bed61f415498a12b628ae428d9d106215
-
 #     def perform_create(self, serializer):
 #         return serializer.save(owner=self.request.user)
 #     # Hàm perform_create() nhận một tham số là serializer
