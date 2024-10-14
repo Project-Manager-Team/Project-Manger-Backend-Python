@@ -16,4 +16,6 @@ class InvitationViewSet(viewsets.ModelViewSet):
         return self.queryset.filter(receiver=user)
 
     def perform_create(self, serializer):
-        return serializer.save(sender=self.request.user)
+        return serializer.save(sender=self.request.user, status=False)
+    
+    

@@ -3,7 +3,11 @@ from ..models import Project
 from .serializers import ProjectSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework import serializers
+from .permissions import isOwnerOrManager
+from django.shortcuts import get_object_or_404
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models import Q
 
 
 class PersonalProjectViewSet(viewsets.ModelViewSet):
@@ -12,27 +16,35 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
+    @action(detail=False, methods=['GET'])
+    def personal(self, request):
+        queryset = self.get_queryset().filter(
+            Q(owner=self.request.user) | Q(manager=self.request.user))
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['GET'])
+    def child(self, request, pk=None):
+        queryset = get_object_or_404(self.get_queryset(), id=pk).get_children()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
     def get_queryset(self):
         user = self.request.user
-        # Tất cả các child và user
-        parent = self.request.query_params.get("parent")
-        root = self.queryset.get(type="personal", owner=user)
-        manage_project = self.queryset.filter(manager=user)
-
-        if parent is not None:
-            all_child_project = root.get_descendants()
-            for project in manage_project:
-                all_child_project |= project.get_descendants(include_self=True)
-            return all_child_project.filter(parent=parent)
-        return root.get_children() | manage_project
+        root = get_object_or_404(self.queryset, owner=user, type="personal")
+        all_descendants = root.get_descendants(include_self=True)
+        for project in self.queryset.filter(manager=user):
+            all_descendants |= project.get_descendants(
+                include_self=True)
+        return all_descendants
 
     def perform_create(self, serializer):
-        user = self.request.user
-        parent = self.request.data.get("parent")
-        root = self.queryset.get(type="personal", owner=user)
-        descendants = root.get_descendants()
-        if parent is not None:
-            if descendants.filter(id=parent).exists():
-                return serializer.save(owner=user, parent=descendants.get(id=parent))
-            raise serializers.ValidationError("parent is not exists")
-        raise serializers.ValidationError('parent: This field is required.')
+        parent_id = self.request.query_params.get('parent_id')
+        if parent_id:
+            parent = get_object_or_404(self.get_queryset(), id=parent_id)
+            return serializer.save(owner=self.request.user, parent=parent, manager=None)
+
+        return serializer.save(owner=self.request.user, parent=self.get_queryset().get(type='personal'), manager=None)
+
+    def perform_destroy(self, instance):
+        instance.delete()

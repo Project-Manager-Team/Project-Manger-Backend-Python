@@ -1,7 +1,10 @@
-from django.urls import path
+from django.urls import path, include
 from .views import InvitationViewSet
+from rest_framework import routers
 
+router = routers.DefaultRouter()
+router.register('', InvitationViewSet)
 
 urlpatterns = [
-    path('', InvitationViewSet.as_view())
+    path("", include(router.urls))
 ]

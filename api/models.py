@@ -55,6 +55,8 @@ class Project(MPTTModel):
 class Invitation (models.Model):
     title = models.CharField(max_length=50)
     context = models.CharField(max_length=200)
+    time_send = models.DateTimeField(auto_now_add=True)
+    duration = models.DateTimeField(auto_now=False, auto_now_add=False)
     status = models.BooleanField(default=False)
 
     receiver = models.ForeignKey(
