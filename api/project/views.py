@@ -16,13 +16,13 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
 
     def get_permissions(self):
-        if self.action == 'delete':
-            return [IsAuthenticated(), IsOwner(), IsNotPersonal()]
+        if self.action == 'destroy':
+            return [IsAuthenticated(), IsOwner(), IsNotPersonalProject()]
         if self.action == 'create':
-            return [IsAuthenticated(), IsOwnerOrManager()]
+            return [IsAuthenticated(), IsOwnerOrIsManger()]
         if self.action == 'update':
-            return [IsAuthenticated(), IsOwnerOrManager(), IsNotPersonal()]
-        return [IsAuthenticated]
+            return [IsAuthenticated(), IsOwnerOrIsManger(), IsNotPersonalProject()]
+        return [IsAuthenticated()]
 
     @action(detail=False, methods=['GET'])
     def personal(self, request):
@@ -48,10 +48,10 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         parent_id = serializer.validated_data.get('parent_id')
-        print(self.request.data)
         if parent_id is not None:
-            parent = get_object_or_404(self.get_queryset(), id=parent_id, type='project')
+            parent = get_object_or_404(
+                self.get_queryset(), id=parent_id, type='project')
             return serializer.save(owner=self.request.user, parent=parent, manager=None)
 
-        return serializer.save(owner=self.request.user, parent=self.get_queryset().get(type='personal'), manager=None)
-
+        parent = get_object_or_404(self.get_queryset(), type='personal')
+        return serializer.save(owner=self.request.user, parent=parent, manager=None)
