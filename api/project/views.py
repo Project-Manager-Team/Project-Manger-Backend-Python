@@ -19,7 +19,7 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         if self.action == 'destroy':
             return [IsAuthenticated(), IsOwner(), IsNotPersonalProject()]
         if self.action == 'create':
-            return [IsAuthenticated(), IsOwnerOrIsManger()]
+            return [IsAuthenticated(), IsOwnerOrIsManger(), IsNotTypePersonal()]
         if self.action == 'update':
             return [IsAuthenticated(), IsOwnerOrIsManger(), IsNotPersonalProject()]
         return [IsAuthenticated()]
@@ -47,11 +47,11 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         return all_descendants
 
     def perform_create(self, serializer):
-        parent_id = serializer.validated_data.get('parent_id')
+        parent_id = self.request.data.get('parent_id')
         if parent_id is not None:
             parent = get_object_or_404(
                 self.get_queryset(), id=parent_id, type='project')
             return serializer.save(owner=self.request.user, parent=parent, manager=None)
 
         parent = get_object_or_404(self.get_queryset(), type='personal')
-        return serializer.save(owner=self.request.user, parent=parent, manager=None)
+        return serializer.save(owner=self.request.user, parent=self.get_queryset().get(type='personal'), manager=None)

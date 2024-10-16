@@ -9,7 +9,6 @@ class InvitationViewSet(viewsets.ModelViewSet):
     queryset = Invitation.objects.all()
     serializer_class = InvitationSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user = self.request.user
@@ -18,4 +17,5 @@ class InvitationViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         return serializer.save(sender=self.request.user, status=False)
     
+            
     

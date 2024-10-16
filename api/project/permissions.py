@@ -19,3 +19,8 @@ class IsNotPersonalProject(BasePermission):
 class IsOwnerOrIsManger(BasePermission):
     def has_object_permission(self, request, view, obj):
         return obj.owner == request.user or obj.mananger == request.user
+
+
+class IsNotTypePersonal(BasePermission):
+    def has_permission(self, request, view):
+        return request.data.get('type') != 'personal'
