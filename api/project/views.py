@@ -49,9 +49,7 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         return all_descendants
 
     def perform_create(self, serializer):
-        print(self.request.data)
-        parent = get_object_or_404(self.get_queryset(), id=serializer.validated_data['parent_id'])
-        return serializer.save(owner=self.request.user, parent=parent, manager=None)
+        return serializer.save(owner=self.request.user, manager=None)
     
     def perform_update(self, serializer):
         return super().perform_update(serializer)
