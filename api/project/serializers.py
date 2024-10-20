@@ -3,7 +3,8 @@ from ..models import Project
 
 
 class ProjectSerializer(serializers.ModelSerializer):
+    parent_id = serializers.IntegerField(write_only=True, required=True)
     class Meta:
         model = Project
         fields = ['id', 'title', 'description', 'time_start',
-                  'time_end', 'type', 'manager', 'parent']
+                  'time_end', 'type', 'manager', 'parent_id']

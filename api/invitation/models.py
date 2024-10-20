@@ -10,7 +10,7 @@ class Invitation(models.Model):
     context = models.CharField(max_length=200)
     time_send = models.DateTimeField(auto_now_add=True, null=True)
     duration = models.DurationField(default=timedelta())
-    status = models.BooleanField(default=False)
+    status = models.BooleanField(null=True, blank=True)
 
     receiver = models.ForeignKey(
         User,

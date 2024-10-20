@@ -8,6 +8,7 @@ from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
+from rest_framework import status
 
 
 class PersonalProjectViewSet(viewsets.ModelViewSet):
@@ -26,10 +27,11 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['GET'])
     def personal(self, request):
-        queryset = self.get_queryset().filter(
-            Q(owner=self.request.user) | Q(manager=self.request.user))
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+        query_set = self.get_queryset()
+        root = get_object_or_404(query_set, owner=request.user, type="personal")
+        children_and_managed = query_set.filter(Q(parent=root) | Q(manager=request.user) | Q(type="personal"))
+        serializer = self.get_serializer(children_and_managed, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['GET'])
     def child(self, request, pk=None):
@@ -47,11 +49,10 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         return all_descendants
 
     def perform_create(self, serializer):
-        parent_id = self.request.data.get('parent_id')
-        if parent_id is not None:
-            parent = get_object_or_404(
-                self.get_queryset(), id=parent_id, type='project')
-            return serializer.save(owner=self.request.user, parent=parent, manager=None)
-
-        parent = get_object_or_404(self.get_queryset(), type='personal')
-        return serializer.save(owner=self.request.user, parent=self.get_queryset().get(type='personal'), manager=None)
+        print(self.request.data)
+        parent = get_object_or_404(self.get_queryset(), id=serializer.validated_data['parent_id'])
+        return serializer.save(owner=self.request.user, parent=parent, manager=None)
+    
+    def perform_update(self, serializer):
+        return super().perform_update(serializer)
+    
