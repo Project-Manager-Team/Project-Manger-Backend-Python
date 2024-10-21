@@ -33,11 +33,7 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(children_and_managed, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
-    
-    # @action()
-    # def add_to_fvlist(self, request):
         
-
     @action(detail=True, methods=['GET'])
     def child(self, request, pk=None):
         queryset = get_object_or_404(self.get_queryset(), id=pk).get_children()
