@@ -22,7 +22,7 @@ class InvitationViewSet(viewsets.ModelViewSet):
             invitation.project.manager = invitation.receiver
             invitation.project.save()
         return serializer.save(sender=self.request.user)
-
+    
     
             
     

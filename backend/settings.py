@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'api',
     'corsheaders',
-    'channels'
+    'drf_spectacular'
 ]
 CORS_ALLOW_ALL_ORIGINS = True
 
@@ -76,12 +76,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
-ASGI_APPLICATION = "backend.asgi.application"
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer"
-    }
-}
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
@@ -106,7 +100,14 @@ REST_FRAMEWORK = {
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-    ]
+    ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Project API',
+    'DESCRIPTION': 'Mô tả API cho dự án của bạn',
+    'VERSION': '1.0.0',
+    # Cấu hình thêm tùy theo nhu cầu
 }
 
 # Password validation

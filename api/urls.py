@@ -1,6 +1,7 @@
 
 from django.urls import path, include
 from rest_framework import routers
+
 # from api import user
 
 """ 
@@ -23,7 +24,7 @@ hàm router.register() nhận vào 2 tham số:
 urlpatterns = [
     path('user/', include('api.user.urls')),
     path('project/', include('api.project.urls')),
-    path('invitation/', include('api.invitation.urls'))
+    path('invitation/', include('api.invitation.urls')),
 ]
 """ 
     path("users/", include("api.users.urls")), có cần tham số thứ nhất là users không?

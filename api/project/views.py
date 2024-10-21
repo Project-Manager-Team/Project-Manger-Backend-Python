@@ -32,13 +32,18 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         children_and_managed = query_set.filter(Q(parent=root) | Q(manager=request.user) | Q(type="personal"))
         serializer = self.get_serializer(children_and_managed, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    
+    # @action()
+    # def add_to_fvlist(self, request):
+        
 
     @action(detail=True, methods=['GET'])
     def child(self, request, pk=None):
         queryset = get_object_or_404(self.get_queryset(), id=pk).get_children()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
-
+    
     def get_queryset(self):
         user = self.request.user
         root = get_object_or_404(self.queryset, owner=user, type="personal")

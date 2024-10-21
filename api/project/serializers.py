@@ -16,5 +16,8 @@ class ProjectSerializer(serializers.ModelSerializer):
             parent = Project.objects.get(owner=self.context['request'].user, type="personal")
         else:
             parent = Project.objects.get(id=parent_id)
+            parent.type = 'project'
+            parent.save()
+            
         validated_data['parent'] = parent
         return super().create(validated_data)
