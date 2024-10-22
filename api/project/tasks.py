@@ -14,5 +14,4 @@ def update_parent_progress(project_id):
             avg_progress = childrens.aggregate(Avg('progress'))['progress__avg']
             project.progress = avg_progress
             project.save()
-        
         project = project.parent
