@@ -9,6 +9,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Q
 from rest_framework import status
+from .tasks import update_parent_progress
 
 
 class PersonalProjectViewSet(viewsets.ModelViewSet):
@@ -50,8 +51,19 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         return all_descendants
 
     def perform_create(self, serializer):
-        return serializer.save(owner=self.request.user, manager=None)
+        response = serializer.save(owner=self.request.user, manager=None, progress=0)
+        update_parent_progress.delay(serializer.validated_data.get('parent_id'))
+        return response
     
     def perform_update(self, serializer):
+        progress = serializer.validated_data.get('progress')
+        if progress is not None:
+            update_parent_progress.delay(self.get_object().parent.id)
         return super().perform_update(serializer)
     
+    def perform_destroy(self, instance):
+        parent_id = instance.parent.id
+        response = super().perform_destroy(instance)
+        update_parent_progress.delay(parent_id)
+        return response
+

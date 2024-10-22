@@ -12,6 +12,20 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 from datetime import timedelta
 from pathlib import Path
 
+
+# project/settings.py
+
+# Broker URL
+BROKER_URL = 'redis://localhost:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+# Backend (nếu bạn muốn lưu kết quả)
+# CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+
+# Thời gian timeout
+CELERY_TASK_RESULT_EXPIRES = 3600  # Kết quả sẽ hết hạn sau 1 giờ
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 

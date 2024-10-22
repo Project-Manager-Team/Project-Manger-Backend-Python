@@ -11,6 +11,7 @@ class Project(MPTTModel):
         PERSONAL = "personal", gettext_lazy("Personal")
 
     title = models.CharField(max_length=100)
+    progress = models.IntegerField(default=0)
     description = models.CharField(max_length=1000)
     time_init = models.DateTimeField(auto_now_add=True)
     time_start = models.DateTimeField(null=True)

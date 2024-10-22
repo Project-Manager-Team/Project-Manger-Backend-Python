@@ -8,16 +8,18 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = ['id', 'title', 'description', 'time_start',
-                  'time_end', 'type', 'manager', 'parent_id']
+                  'time_end', 'type', 'manager', 'parent_id', 'progress']
         
     def create(self, validated_data):
         parent_id = validated_data.pop('parent_id', None)
         if parent_id is None:
             parent = Project.objects.get(owner=self.context['request'].user, type="personal")
+            validated_data['parent_id'] = parent.id
         else:
             parent = Project.objects.get(id=parent_id)
             parent.type = 'project'
             parent.save()
             
         validated_data['parent'] = parent
+        
         return super().create(validated_data)
