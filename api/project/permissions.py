@@ -8,7 +8,7 @@ class IsOwner(BasePermission):
 
 class IsManager(BasePermission):
     def has_object_permission(self, request, view, obj):
-        return obj.mananger == request.user
+        return obj.manager == request.user
 
 
 class IsNotPersonalProject(BasePermission):
@@ -18,7 +18,7 @@ class IsNotPersonalProject(BasePermission):
 
 class IsOwnerOrIsManger(BasePermission):
     def has_object_permission(self, request, view, obj):
-        return obj.owner == request.user or obj.mananger == request.user
+        return obj.owner == request.user or obj.manager == request.user
 
 
 class IsNotTypePersonal(BasePermission):
