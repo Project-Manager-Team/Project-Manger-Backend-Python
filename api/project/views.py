@@ -15,8 +15,9 @@ from django.forms.models import model_to_dict
 
 def build_tree(root):
     tree_dict = model_to_dict(root)
-    tree_dict['children'] = [build_tree(child) for child in  root.get_children()] 
+    tree_dict['children'] = [build_tree(child) for child in  root.get_children().order_by('id')] 
     return tree_dict
+
 class PersonalProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
@@ -81,7 +82,6 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
     def descendants(self, request, pk=None):
         root = get_object_or_404(self.get_queryset(), id=pk)
         tree = build_tree(root)
-        print(tree)
         return Response(tree, status=status.HTTP_200_OK)
         
     
