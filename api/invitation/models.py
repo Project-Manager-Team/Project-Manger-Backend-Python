@@ -7,8 +7,8 @@ from django.utils import timezone
 
 class Invitation(models.Model):
     title = models.CharField(max_length=50)
-    context = models.CharField(max_length=200)
-    time_send = models.DateTimeField(auto_now_add=True, null=True)
+    content = models.CharField(max_length=200)
+    sendTime = models.DateTimeField(auto_now_add=True, null=True)
     duration = models.DurationField(default=timedelta())
     status = models.BooleanField(null=True, blank=True)
 
@@ -35,3 +35,8 @@ class Invitation(models.Model):
         null=True,
         related_name='invitations'
     )
+
+    def accept(self):
+        self.project.managers.add(self.receiver)
+        self.status = True
+        self.save()

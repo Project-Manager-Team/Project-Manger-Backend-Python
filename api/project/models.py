@@ -12,14 +12,16 @@ class Project(MPTTModel):
     title = models.CharField(max_length=100)
     progress = models.IntegerField(default=0)
     description = models.CharField(max_length=1000, blank=True, null=True)
-    time_init = models.DateTimeField(auto_now_add=True)
-    time_start = models.DateTimeField(null=True)
-    time_completed = models.DateTimeField(null=True, blank=True)
-    time_end = models.DateTimeField(null=True)
+    
+    initTime = models.DateTimeField(auto_now_add=True)
+    beginTime = models.DateTimeField(null=True)
+    completeTime = models.DateTimeField(null=True, blank=True)
+    endTime = models.DateTimeField(null=True)
     type = models.CharField(
         max_length=8,
         choices=ProjectType.choices,
         default=ProjectType.TASK,
+        db_index=True
     )
     owner = models.ForeignKey(
         User,
@@ -28,15 +30,21 @@ class Project(MPTTModel):
         related_name='owned_projects',
         db_index=True
     )
-    difficulty_level = models.IntegerField(default=1, null=True)
+    diffLevel = models.IntegerField(default=1, null=True)
     active = models.BooleanField(default=True)
 
-    manager = models.ForeignKey(
+    managers = models.ManyToManyField(
         User,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='manager'
+        related_name='managed_projects',
+        blank=True,
+        db_index=True
     )
+    # manager = models.ForeignKey(
+    #     User,
+    #     on_delete=models.SET_NULL,
+    #     null=True,
+    #     related_name='manager'
+    # )
 
     parent = TreeForeignKey(
         'self',
@@ -46,9 +54,6 @@ class Project(MPTTModel):
         related_name='children',
         db_index=True
     )
-    
-    level = models.IntegerField(default=0)
-    
     
     def is_completed(self):
         return self.progress == 100
