@@ -35,6 +35,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure--k&rx6p5bl84*n+@a_c&o2u@8oez9^_*_3a&ggy04xj_cztaw5'
 
+
+# MEDIA
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
