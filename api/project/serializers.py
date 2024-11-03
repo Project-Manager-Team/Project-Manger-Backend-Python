@@ -6,14 +6,28 @@ from django.utils import timezone  # Added import
 
 class ProjectSerializer(serializers.ModelSerializer):
     parentId = serializers.IntegerField(required=False, allow_null=True)
-    managerNames = serializers.SerializerMethodField()
+    managers = serializers.SerializerMethodField()
+    owner = serializers.SerializerMethodField()
     class Meta:
         model = Project
         fields = ['id', 'title', 'description', 'beginTime', 'completeTime',
-                  'endTime', 'type', 'managerNames', 'parentId', 'progress', 'diffLevel']
+                  'endTime', 'type', 'managers', 'owner', 'parentId', 'progress', 'diffLevel']
     
-    def get_managerNames(self, obj):
-        return list(obj.managers.values_list('username', flat=True))
+    def get_managers(self, obj):
+        return [
+            {
+                "username": manager.username,
+                "avatar": manager.userprofile.avatar.url if hasattr(manager, 'userprofile') and manager.userprofile.avatar else None
+            }
+            for manager in obj.managers.all()
+        ]
+    
+    def get_owner(self, obj):
+        owner = obj.owner
+        return {
+            "username": owner.username,
+            "avatar": owner.userprofile.avatar.url if hasattr(owner, 'userprofile') and owner.userprofile.avatar else None
+        } if owner else None
     
     def create(self, validated_data):
         parentId = validated_data.pop('parentId', None)
@@ -39,9 +53,6 @@ class ProjectSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
     def validate(self, data):
-        """
-        Ensure that a task cannot be marked as completed after its end time.
-        """
         request = self.context.get('request')
         if self.instance:
             if self.instance.type == 'task' and self.instance.endTime:

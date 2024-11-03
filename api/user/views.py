@@ -15,6 +15,7 @@ class UserRegister(generics.CreateAPIView):
     def perform_create(self, serializer):
         user = serializer.save()
         Project.objects.create(owner=user, title="Root", type="personal")
+        UserProfile.objects.create(user=user)
         return user
 
 class UserViewSet(viewsets.ViewSet):
@@ -66,4 +67,3 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             serializer.save()
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    

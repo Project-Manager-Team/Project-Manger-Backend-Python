@@ -42,7 +42,7 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         )
         all_descendants = root.get_descendants(include_self=True).distinct().prefetch_related('managers')
         for project in self.queryset.filter(managers=user).prefetch_related('managers'):
-            all_descendants |= project.get_descendants(include_self=True).prefetch_related('managers')
+            all_descendants |= project.get_descendants(include_self=True).prefetch_related('managers').distinct()
         return all_descendants.order_by('id').distinct()
 
     def perform_create(self, serializer):
