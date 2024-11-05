@@ -11,7 +11,7 @@ from rest_framework.response import Response
 class PermissionsViewSet(viewsets.ModelViewSet):
     queryset = Permissions.objects.all()
     serializer_class = PermissionsSerializer
-    # permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
+    permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
 
     def perform_create(self, serializer):
         project = serializer.validated_data['project']
