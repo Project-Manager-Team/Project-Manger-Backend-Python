@@ -42,7 +42,7 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '27.79.222.157', '127.0.0.1', 'www.shadowserver.org']
+ALLOWED_HOSTS = ['localhost', '27.79.131.192', '127.0.0.1', 'www.shadowserver.org']
 
 # Application definition
 
