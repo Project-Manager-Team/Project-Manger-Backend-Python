@@ -37,21 +37,25 @@ class ProjectSerializer(serializers.ModelSerializer):
         try:
             permission = obj.permissions.get(user=user)
             return {
-                'id': permission.id,  # Thêm permission_id
-                'canEdit': permission.canEdit,
-                'canDelete': permission.canDelete, 
-                'canAdd': permission.canAdd,
-                'canFinish': permission.canFinish
+                'id': permission.id,
+                'canEdit': permission.canEdit,           # Quyền chỉnh sửa
+                'canDelete': permission.canDelete,       # Quyền xóa
+                'canAdd': permission.canAdd,             # Quyền thêm
+                'canFinish': permission.canFinish,       # Quyền hoàn thành
+                'canAddMember': permission.canAddMember,     # Quyền thêm thành viên
+                'canRemoveMember': permission.canRemoveMember # Quyền xóa thành viên
             }
         except:
             # Nếu là owner, trả về tất cả quyền
             if obj.owner == user:
                 return {
-                    'id': None,  # Owner không cần permission_id
+                    'id': None,
                     'canEdit': True,
                     'canDelete': True,
                     'canAdd': True,
-                    'canFinish': True
+                    'canFinish': True,
+                    'canAddMember': True,     # Owner luôn có quyền quản lý thành viên
+                    'canRemoveMember': True
                 }
             return None
     

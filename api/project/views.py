@@ -15,6 +15,8 @@ from django.forms.models import model_to_dict
 from rest_framework.exceptions import ValidationError 
 from api.permissions.serializers import PermissionsSerializer
 from django.db.models import Prefetch
+from django.contrib.auth.models import User
+from api.permissions.models import Permissions
 
 # Hàm để xây dựng cây project dưới dạng dictionary
 def build_tree(root):
@@ -145,7 +147,9 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
                         'canEdit': perm.canEdit,
                         'canDelete': perm.canDelete,
                         'canAdd': perm.canAdd,
-                        'canFinish': perm.canFinish
+                        'canFinish': perm.canFinish,
+                        'canAddMember': perm.canAddMember,      # Thêm quyền quản lý thành viên
+                        'canRemoveMember': perm.canRemoveMember # Thêm quyền xóa thành viên
                     }
                 })
             else:
@@ -160,6 +164,36 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
                     "permissions": None
                 })
         return Response(data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['POST'], permission_classes=[IsAuthenticated, HasProjectPermission])
+    def remove_manager(self, request, pk=None):
+        project = self.get_object()
+        self.check_object_permissions(request, project)
+        
+        # Kiểm tra xem người dùng có quyền xóa thành viên không
+        if not (project.owner == request.user or 
+                Permissions.objects.filter(project=project, 
+                                        user=request.user, 
+                                        canRemoveMember=True).exists()):
+            return Response(
+                {'detail': 'Bạn không có quyền xóa thành viên khỏi dự án này.'}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+                          
+        manager_id = request.data.get('managerId')
+        if not manager_id:
+            return Response({'detail': 'Manager ID is required.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            manager = User.objects.get(id=manager_id)
+            if manager in project.managers.all():
+                project.managers.remove(manager)
+                # Remove associated permissions
+                Permissions.objects.filter(project=project, user=manager).delete()
+                return Response({'detail': 'Manager removed successfully.'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'detail': 'User is not a manager of this project.'}, status=status.HTTP_400_BAD_REQUEST)
+        except User.DoesNotExist:
+            return Response({'detail': 'Manager not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 

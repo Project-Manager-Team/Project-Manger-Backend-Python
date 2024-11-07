@@ -79,5 +79,12 @@ def add_permissions_for_manager(sender, instance, action, pk_set, **kwargs):
             Permissions.objects.get_or_create(
                 project=instance,
                 user_id=user_id,
-                defaults={'canEdit': True, 'canDelete': True, 'canAdd': True, 'canFinish': True} 
+                defaults={
+                    'canEdit': True,          # Cho phép chỉnh sửa
+                    'canDelete': True,        # Cho phép xóa
+                    'canAdd': True,           # Cho phép thêm project con
+                    'canFinish': True,        # Cho phép đánh dấu hoàn thành
+                    'canAddMember': False,    # Mặc định không cho phép thêm thành viên và tạo lời mời
+                    'canRemoveMember': False  # Mặc định không cho phép xóa thành viên
+                }
             )
