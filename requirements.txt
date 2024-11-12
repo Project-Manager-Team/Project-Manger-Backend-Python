@@ -22,6 +22,7 @@ jsonschema-specifications==2024.10.1
 kombu==5.4.2
 msgpack==1.1.0
 mysqlclient==2.2.4
+pillow==11.0.0
 prompt_toolkit==3.0.48
 PyJWT==2.9.0
 python-dateutil==2.9.0.post0
