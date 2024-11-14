@@ -15,7 +15,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Project
-        fields = ['id', 'title', 'description', 'beginTime', 'completeTime',
+        fields = ['id', 'title','color', 'description', 'beginTime', 'completeTime',
                   'endTime', 'type', 'managersCount', 'owner', 'parentId', 'progress', 
                   'diffLevel', 'permissions']  # Thay đổi managers thành managers_count và loại bỏ managers_permissions
     

@@ -20,6 +20,7 @@ class Project(MPTTModel):
     beginTime = models.DateTimeField(null=True)
     completeTime = models.DateTimeField(null=True, blank=True)
     endTime = models.DateTimeField(null=True)
+    color = models.CharField(max_length=20, null=True, blank=True)
     type = models.CharField(
         max_length=8,
         choices=ProjectType.choices,
