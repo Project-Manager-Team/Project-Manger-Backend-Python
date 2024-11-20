@@ -3,34 +3,39 @@ from api.permissions.models import Permissions  # Import Permissions model
 from .models import Project  # Import Project model
 
 class IsOwner(BasePermission):
-    # Kiểm tra user là owner của project
     def has_object_permission(self, request, view, obj):
         return obj.owner == request.user
 
 class IsManager(BasePermission):
-    # Kiểm tra user là manager của project
     def has_object_permission(self, request, view, obj):
         return request.user in obj.managers.all()
 
 class IsNotPersonalProject(BasePermission):
-    # Ngăn chặn thao tác trên project loại 'personal'
     def has_object_permission(self, request, view, obj):
         return obj.type != 'personal'
 
 class IsOwnerOrIsManager(BasePermission):
-    # Kiểm tra user là owner hoặc manager
     def has_object_permission(self, request, view, obj):
         return obj.owner == request.user or request.user in obj.managers.all()
 
 class IsNotTypePersonal(BasePermission):
-    # Ngăn chặn tạo project loại 'personal'
     def has_permission(self, request, view):
         return request.data.get('type') != 'personal'
 
 class HasProjectPermission(BasePermission):
+    """
+    Kiểm tra quyền truy cập dự án.
+    
+    Các quyền được kiểm tra:
+    - canEdit: Sửa thông tin
+    - canDelete: Xóa dự án  
+    - canAdd: Thêm dự án con
+    - canFinish: Đánh dấu hoàn thành
+    - canAddMember: Thêm thành viên
+    - canRemoveMember: Xóa thành viên
+    """
     def has_permission(self, request, view):
         if view.action == 'create':
-            # Kiểm tra quyền tạo project con
             parent_id = request.data.get('parentId')
             if not parent_id:
                 return True
@@ -43,14 +48,11 @@ class HasProjectPermission(BasePermission):
 
     def has_object_permission(self, request, view, obj):
         if request.method in ['GET', 'HEAD', 'OPTIONS']:
-            # Cho phép các phương thức đọc
             return True
 
         if obj.owner == request.user:
-            # Owner có toàn quyền
             return True
 
-        # Map phương thức HTTP tới loại quyền
         permission_map = {
             'PUT': 'canEdit',
             'PATCH': 'canFinish',
@@ -59,12 +61,22 @@ class HasProjectPermission(BasePermission):
 
         permission_type = permission_map.get(request.method)
         if permission_type:
-            # Kiểm tra quyền bằng cách duyệt ngược lên project cha
             return self.check_permission_recursive(obj, request.user, permission_type)
 
         return False
 
     def check_permission_recursive(self, project, user, permission_type):
+        """
+        Kiểm tra quyền theo cách đệ quy lên cây dự án.
+        
+        Args:
+            project: Dự án cần kiểm tra
+            user: Người dùng cần kiểm tra quyền
+            permission_type: Loại quyền cần kiểm tra
+            
+        Returns:
+            bool: True nếu người dùng có quyền, False nếu không
+        """
         current_project = project
         while current_project is not None:
             if current_project.owner == user:

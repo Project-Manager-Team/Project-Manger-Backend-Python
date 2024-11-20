@@ -3,20 +3,25 @@ from django.contrib.auth.models import User
 from api.project.models import Project
 
 class Permissions(models.Model):
-    # Quan hệ với Project và User
+    """
+    Model quản lý quyền hạn của người dùng trong dự án.
+    
+    Định nghĩa mối quan hệ giữa người dùng và dự án, xác định các hành động 
+    mà người dùng được phép thực hiện trong phạm vi của dự án đó.
+    """
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='permissions')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='permissions')
     
-    # Các quyền cơ bản
-    canEdit = models.BooleanField(default=False)     # Quyền chỉnh sửa project
-    canDelete = models.BooleanField(default=False)   # Quyền xóa project
-    canAdd = models.BooleanField(default=False)      # Quyền thêm project con
-    canFinish = models.BooleanField(default=False)   # Quyền đánh dấu hoàn thành
+    canEdit = models.BooleanField(default=False)
+    canDelete = models.BooleanField(default=False)
+    canAdd = models.BooleanField(default=False)
+    canFinish = models.BooleanField(default=False)
     
-    # Các quyền quản lý thành viên
-    canAddMember = models.BooleanField(default=False)    # Quyền thêm thành viên và tạo lời mời
-    canRemoveMember = models.BooleanField(default=False) # Quyền xóa thành viên khỏi project
+    canAddMember = models.BooleanField(default=False)
+    canRemoveMember = models.BooleanField(default=False)
 
     class Meta:
-        # Đảm bảo mỗi user chỉ có một bản ghi permission cho mỗi project
+        """
+        Đảm bảo mỗi người dùng chỉ có một bộ quyền hạn cho mỗi dự án.
+        """
         unique_together = ['project', 'user']

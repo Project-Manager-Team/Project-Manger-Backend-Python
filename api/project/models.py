@@ -6,13 +6,22 @@ from django.db.models.signals import m2m_changed
 from django.dispatch import receiver
 
 class Project(MPTTModel):
-    # Định nghĩa các lựa chọn cho loại project
+    """
+    Model quản lý thông tin dự án theo cấu trúc cây.
+    
+    Các trường chính:
+    - title: Tên dự án
+    - progress: Tiến độ (0-100)
+    - type: Loại (project/task/personal) 
+    - owner: Người tạo dự án
+    - managers: Danh sách người quản lý
+    - parent: Dự án cha
+    """
     class ProjectType(models.TextChoices):
         PROJECT = "project", gettext_lazy("Project")
         TASK = "task", gettext_lazy("Task")
         PERSONAL = "personal", gettext_lazy("Personal")
     
-    # Các trường thông tin của project
     title = models.CharField(max_length=100)
     progress = models.IntegerField(default=0)
     description = models.CharField(max_length=1000, blank=True, null=True)
@@ -37,7 +46,6 @@ class Project(MPTTModel):
     diffLevel = models.IntegerField(default=1, null=True)
     active = models.BooleanField(default=True)
 
-    # Quan hệ ManyToMany với User để xác định managers
     managers = models.ManyToManyField(
         User,
         related_name='managed_projects',
@@ -45,7 +53,6 @@ class Project(MPTTModel):
         db_index=True
     )
 
-    # Quan hệ cây với chính nó để xác định project cha
     parent = TreeForeignKey(
         'self',
         on_delete=models.CASCADE,
@@ -56,20 +63,21 @@ class Project(MPTTModel):
     )
     
     def is_completed(self):
-        # Kiểm tra project đã hoàn thành hay chưa
+        """
+        Kiểm tra trạng thái hoàn thành của dự án.
+        Returns:
+            bool: True nếu dự án đã hoàn thành (progress = 100)
+        """
         return self.progress == 100
     
     def update_progress(self, progress_value):
-        # Cập nhật tiến độ của project
         self.progress = progress_value
         self.save()
         
     class MPTTMeta:
-        # Thiết lập thứ tự chèn trong cây
         order_insertion_by = ['id']
 
     def __str__(self):
-        # Chuỗi biểu diễn của project
         return f"{self.id} - {self.title} - {self.type}"
 
 @receiver(m2m_changed, sender=Project.managers.through)
@@ -81,11 +89,11 @@ def add_permissions_for_manager(sender, instance, action, pk_set, **kwargs):
                 project=instance,
                 user_id=user_id,
                 defaults={
-                    'canEdit': True,          # Cho phép chỉnh sửa
-                    'canDelete': True,        # Cho phép xóa
-                    'canAdd': True,           # Cho phép thêm project con
-                    'canFinish': True,        # Cho phép đánh dấu hoàn thành
-                    'canAddMember': False,    # Mặc định không cho phép thêm thành viên và tạo lời mời
-                    'canRemoveMember': False  # Mặc định không cho phép xóa thành viên
+                    'canEdit': True,          
+                    'canDelete': True,       
+                    'canAdd': True,          
+                    'canFinish': True,    
+                    'canAddMember': False,    
+                    'canRemoveMember': False  
                 }
             )

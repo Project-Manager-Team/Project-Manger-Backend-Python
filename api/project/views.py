@@ -19,7 +19,6 @@ from django.utils import timezone
 from typing import Union, List, Dict, Any
 from django.http import HttpRequest
 
-# Hàm để xây dựng cây project dưới dạng dictionary
 def get_project_tree(root: Project) -> Dict[str, Any]:
     serializer = RecursiveProjectSerializer(root)
     return serializer.data
@@ -29,12 +28,24 @@ def get_project_report_tree(root: Project, context: Dict[str, Any]) -> Union[Dic
     return serializer.data
 
 class PersonalProjectViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet xử lý các thao tác CRUD cho dự án.
+    Cung cấp các API endpoint cho:
+    - Quản lý dự án cá nhân
+    - Quản lý dự án được phân công
+    - Xem cấu trúc cây dự án
+    - Quản lý quyền của thành viên
+    """
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
     authentication_classes = [JWTAuthentication]
 
     def get_permissions(self) -> List[Any]:
-        # Xác định permissions dựa trên action
+        """
+        Xác định quyền truy cập dựa trên hành động đang thực hiện.
+        Returns:
+            List[Any]: Danh sách các permission classes cần kiểm tra
+        """
         if self.action == 'destroy':
             return [IsAuthenticated(), HasProjectPermission(), IsNotPersonalProject()]
         if self.action == 'create':
@@ -44,25 +55,24 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         return [IsAuthenticated(), HasProjectPermission()]
 
     def get_queryset(self) -> Any:
-        # Lấy danh sách projects mà user có quyền truy cập
+        """
+        Lấy danh sách các dự án mà người dùng có quyền truy cập.
+        Returns:
+            QuerySet: Tập hợp các dự án người dùng có thể truy cập
+        """
         user = self.request.user
-        # Lấy personal project của user
         root = get_object_or_404(
             self.queryset.select_related('owner').prefetch_related('managers'),
             owner=user, type="personal"
         )
-        # Lấy tất cả descendants của personal project
         all_descendants = root.get_descendants(include_self=True).distinct().prefetch_related('managers')
-        # Thêm projects mà user là manager
         for project in self.queryset.filter(managers=user).prefetch_related('managers'):
             all_descendants |= project.get_descendants(include_self=True).prefetch_related('managers').distinct()
         return all_descendants.order_by('id').distinct()
 
     def perform_create(self, serializer: ProjectSerializer) -> None:
         try:
-            # Lưu project mới với owner là user hiện tại và progress = 0
             response = serializer.save(owner=self.request.user, progress=0)
-            # Cập nhật progress cho project cha (nếu có)
             update_parent_progress.delay(serializer.validated_data.get('parentId'))
             return response
         except ValidationError as e:
@@ -74,10 +84,8 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         try:
             progress = serializer.validated_data.get('progress')
             if progress is not None:
-                # Set completeTime when progress reaches 100%
                 if progress >= 100 and not obj.completeTime:
                     serializer.validated_data['completeTime'] = timezone.now()
-                # Reset completeTime if progress is less than 100%
                 elif progress < 100 and obj.completeTime:
                     serializer.validated_data['completeTime'] = None
                 update_parent_progress.delay(obj.parent.id)
@@ -86,57 +94,47 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
             raise ValidationError({"detail": e.detail})
     
     def perform_destroy(self, instance: Project) -> None:
-        # Kiểm tra permissions trước khi xóa
         self.check_object_permissions(self.request, instance)
         parent_id = instance.parent.id
         if instance.owner == self.request.user:            
-            # Nếu là owner, xóa project
             super().perform_destroy(instance)
             update_parent_progress.delay(parent_id)
         else:
-            # Nếu không phải owner, chỉ xóa user khỏi managers
             instance.managers.remove(self.request.user)
             instance.save()
         return None
 
     @action(detail=False, methods=['GET'])
     def personal(self, request: HttpRequest) -> Response:
-        # Return personal projects owned by the user
         queryset = get_object_or_404(self.get_queryset(),owner=request.user, type="personal").get_children()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['GET'])
     def managed(self, request: HttpRequest) -> Response:
-        # Return projects managed by the user
         queryset = self.get_queryset().filter(managers=request.user).distinct()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     @action(detail=True, methods=['GET'])
     def child(self, request: HttpRequest, pk: Union[str, None] = None) -> Response:
-        # Lấy các project con trực tiếp của project hiện tại
         queryset = get_object_or_404(self.get_queryset(), id=pk).get_children()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['GET'])
     def tree_personal(self, request: HttpRequest) -> Response:
-        # Get the root project and all its descendants
         root = get_object_or_404(self.get_queryset(), type="personal", parent=None, owner=request.user)
         tree = get_project_tree(root)
         return Response(tree, status=status.HTTP_200_OK)
     
     @action(detail=False, methods=['GET'])
     def managed_tree(self, request: HttpRequest) -> Response:
-        # Get all projects managed by the user
         managed_projects = self.get_queryset().filter(managers=request.user)
         
-        # Get the root nodes (projects that are directly managed)
         root_nodes = [project for project in managed_projects 
                      if not any(p in managed_projects for p in project.get_ancestors())]
         
-        # Build tree structure for each root node
         trees = []
         for root in root_nodes:
             trees.append(get_project_tree(root))

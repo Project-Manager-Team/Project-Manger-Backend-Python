@@ -9,11 +9,21 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 
 class PermissionsViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet để quản lý quyền hạn trong dự án.
+    
+    Cung cấp các chức năng CRUD cho quyền hạn và các phương thức tùy chỉnh
+    để truy vấn quyền hạn theo dự án và người dùng.
+    """
     queryset = Permissions.objects.all()
     serializer_class = PermissionsSerializer
     permission_classes = [IsAuthenticated, IsOwnerOrAdmin]
 
     def perform_create(self, serializer):
+        """
+        Tạo mới quyền hạn.
+        Chỉ chủ sở hữu dự án mới có thể tạo quyền hạn.
+        """
         project = serializer.validated_data['project']
         if project.owner != self.request.user:
             raise PermissionDenied("Only the project owner can modify permissions.")
@@ -35,6 +45,13 @@ class PermissionsViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['GET'])
     def get_by_project_user(self, request):
+        """
+        Lấy thông tin quyền hạn theo dự án và người dùng.
+        
+        Tham số query:
+            - project_id: ID của dự án
+            - user_id: ID của người dùng
+        """
         project_id = request.query_params.get('project_id')
         user_id = request.query_params.get('user_id')
         if not project_id or not user_id:
