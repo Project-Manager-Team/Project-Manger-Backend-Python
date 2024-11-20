@@ -22,7 +22,7 @@ Một ứng dụng web quản lý dự án được xây dựng với Django và
 - Celery
 - Redis
 - JWT Authentication
-- PostgreSQL/SQLite
+- SQLite
 
 ### Frontend
 - React
