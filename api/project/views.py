@@ -1,6 +1,6 @@
 from rest_framework import viewsets
 from ..models import Project
-from .serializers import ProjectSerializer
+from .serializers import ProjectSerializer, RecursiveProjectSerializer, RecursiveProjectReportSerializer
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from .permissions import *
@@ -8,30 +8,32 @@ from .permissions import HasProjectPermission
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from django.db.models import Q
 from rest_framework import status
 from .tasks import update_parent_progress
-from django.forms.models import model_to_dict
 from rest_framework.exceptions import ValidationError 
-from api.permissions.serializers import PermissionsSerializer
 from django.db.models import Prefetch
 from django.contrib.auth.models import User
 from api.permissions.models import Permissions
+from mptt.utils import get_cached_trees
+from django.utils import timezone
+from typing import Union, List, Dict, Any
+from django.http import HttpRequest
 
 # Hàm để xây dựng cây project dưới dạng dictionary
-def build_tree(root):
-    # Chuyển project thành dictionary
-    tree_dict = model_to_dict(root)
-    # Đệ quy cho các project con
-    tree_dict['children'] = [build_tree(child) for child in  root.get_children().order_by('id')] 
-    return tree_dict
+def get_project_tree(root: Project) -> Dict[str, Any]:
+    serializer = RecursiveProjectSerializer(root)
+    return serializer.data
+
+def get_project_report_tree(root: Project, context: Dict[str, Any]) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
+    serializer = RecursiveProjectReportSerializer(root, context=context)
+    return serializer.data
 
 class PersonalProjectViewSet(viewsets.ModelViewSet):
     queryset = Project.objects.all()
     serializer_class = ProjectSerializer
     authentication_classes = [JWTAuthentication]
 
-    def get_permissions(self):
+    def get_permissions(self) -> List[Any]:
         # Xác định permissions dựa trên action
         if self.action == 'destroy':
             return [IsAuthenticated(), HasProjectPermission(), IsNotPersonalProject()]
@@ -41,7 +43,7 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
             return [IsAuthenticated(), HasProjectPermission(), IsNotPersonalProject()]
         return [IsAuthenticated(), HasProjectPermission()]
 
-    def get_queryset(self):
+    def get_queryset(self) -> Any:
         # Lấy danh sách projects mà user có quyền truy cập
         user = self.request.user
         # Lấy personal project của user
@@ -56,7 +58,7 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
             all_descendants |= project.get_descendants(include_self=True).prefetch_related('managers').distinct()
         return all_descendants.order_by('id').distinct()
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer: ProjectSerializer) -> None:
         try:
             # Lưu project mới với owner là user hiện tại và progress = 0
             response = serializer.save(owner=self.request.user, progress=0)
@@ -66,20 +68,24 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         except ValidationError as e:
             raise ValidationError({"detail": e.detail})
     
-    def perform_update(self, serializer):
+    def perform_update(self, serializer: ProjectSerializer) -> None:
         obj = serializer.instance
-        # Kiểm tra permissions trước khi cập nhật
         self.check_object_permissions(self.request, obj)
         try:
-            # Nếu có progress mới, cập nhật progress cho project cha
             progress = serializer.validated_data.get('progress')
             if progress is not None:
+                # Set completeTime when progress reaches 100%
+                if progress >= 100 and not obj.completeTime:
+                    serializer.validated_data['completeTime'] = timezone.now()
+                # Reset completeTime if progress is less than 100%
+                elif progress < 100 and obj.completeTime:
+                    serializer.validated_data['completeTime'] = None
                 update_parent_progress.delay(obj.parent.id)
             super().perform_update(serializer)
         except ValidationError as e:
             raise ValidationError({"detail": e.detail})
     
-    def perform_destroy(self, instance):
+    def perform_destroy(self, instance: Project) -> None:
         # Kiểm tra permissions trước khi xóa
         self.check_object_permissions(self.request, instance)
         parent_id = instance.parent.id
@@ -94,34 +100,52 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         return None
 
     @action(detail=False, methods=['GET'])
-    def personal(self, request):
-        # Lấy danh sách personal projects của user
-        query_set = self.get_queryset()
-        root = get_object_or_404(query_set.select_related('owner'), owner=request.user, type="personal")
-        # Lấy các project con trực tiếp và các project mà user là manager
-        children_and_managed = query_set.filter(
-            Q(parent=root) | Q(managers=request.user) | Q(type="personal")
-        ).distinct().prefetch_related('managers')
-        serializer = self.get_serializer(children_and_managed, many=True)
+    def personal(self, request: HttpRequest) -> Response:
+        # Return personal projects owned by the user
+        queryset = get_object_or_404(self.get_queryset(),owner=request.user, type="personal").get_children()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['GET'])
+    def managed(self, request: HttpRequest) -> Response:
+        # Return projects managed by the user
+        queryset = self.get_queryset().filter(managers=request.user).distinct()
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     @action(detail=True, methods=['GET'])
-    def child(self, request, pk=None):
+    def child(self, request: HttpRequest, pk: Union[str, None] = None) -> Response:
         # Lấy các project con trực tiếp của project hiện tại
         queryset = get_object_or_404(self.get_queryset(), id=pk).get_children()
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
     
-    @action(detail=True, methods=['GET'])
-    def descendants(self, request, pk=None):
-        # Lấy toàn bộ cây project con
-        root = get_object_or_404(self.get_queryset(), id=pk)
-        tree = build_tree(root)
+    @action(detail=False, methods=['GET'])
+    def tree_personal(self, request: HttpRequest) -> Response:
+        # Get the root project and all its descendants
+        root = get_object_or_404(self.get_queryset(), type="personal", parent=None, owner=request.user)
+        tree = get_project_tree(root)
         return Response(tree, status=status.HTTP_200_OK)
     
+    @action(detail=False, methods=['GET'])
+    def managed_tree(self, request: HttpRequest) -> Response:
+        # Get all projects managed by the user
+        managed_projects = self.get_queryset().filter(managers=request.user)
+        
+        # Get the root nodes (projects that are directly managed)
+        root_nodes = [project for project in managed_projects 
+                     if not any(p in managed_projects for p in project.get_ancestors())]
+        
+        # Build tree structure for each root node
+        trees = []
+        for root in root_nodes:
+            trees.append(get_project_tree(root))
+            
+        return Response(trees, status=status.HTTP_200_OK)
+
+    
     @action(detail=True, methods=['GET'])
-    def managers_permissions(self, request, pk=None):
-        # Lấy project và prefetch managers cùng với permissions
+    def managers_permissions(self, request: HttpRequest, pk: Union[str, None] = None) -> Response:
         project = get_object_or_404(
             self.get_queryset().prefetch_related(
                 'managers__userprofile',
@@ -129,7 +153,6 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
             ),
             id=pk
         )
-        # Tạo mapping từ user_id đến Permission
         permissions_dict = {permission.user_id: permission for permission in project.permissions.all()}
 
         data = []
@@ -148,12 +171,11 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
                         'canDelete': perm.canDelete,
                         'canAdd': perm.canAdd,
                         'canFinish': perm.canFinish,
-                        'canAddMember': perm.canAddMember,      # Thêm quyền quản lý thành viên
-                        'canRemoveMember': perm.canRemoveMember # Thêm quyền xóa thành viên
+                        'canAddMember': perm.canAddMember,     
+                        'canRemoveMember': perm.canRemoveMember 
                     }
                 })
             else:
-                # Trường hợp không tìm thấy Permission (hiếm khi xảy ra)
                 data.append({
                     "user": {
                         "id": manager.id,
@@ -166,11 +188,10 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
         return Response(data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['POST'], permission_classes=[IsAuthenticated, HasProjectPermission])
-    def remove_manager(self, request, pk=None):
+    def remove_manager(self, request: HttpRequest, pk: Union[str, None] = None) -> Response:
         project = self.get_object()
         self.check_object_permissions(request, project)
         
-        # Kiểm tra xem người dùng có quyền xóa thành viên không
         if not (project.owner == request.user or 
                 Permissions.objects.filter(project=project, 
                                         user=request.user, 
@@ -187,13 +208,18 @@ class PersonalProjectViewSet(viewsets.ModelViewSet):
             manager = User.objects.get(id=manager_id)
             if manager in project.managers.all():
                 project.managers.remove(manager)
-                # Remove associated permissions
                 Permissions.objects.filter(project=project, user=manager).delete()
                 return Response({'detail': 'Manager removed successfully.'}, status=status.HTTP_200_OK)
             else:
                 return Response({'detail': 'User is not a manager of this project.'}, status=status.HTTP_400_BAD_REQUEST)
         except User.DoesNotExist:
             return Response({'detail': 'Manager not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=True, methods=['GET'])
+    def report(self, request: HttpRequest, pk: Union[str, None] = None) -> Response:
+        project = self.get_object()
+        tree = get_project_report_tree(project, {'request': request})
+        return Response(tree, status=status.HTTP_200_OK)
 
 
 

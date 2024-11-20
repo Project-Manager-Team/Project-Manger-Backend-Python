@@ -32,8 +32,11 @@ class ProjectSerializer(serializers.ModelSerializer):
         } if owner else None
     
     def get_permissions(self, obj):
-        # Lấy quyền của user hiện tại đối với project này
-        user = self.context['request'].user
+        # Get user from context instead of direct request access
+        user = self.context.get('request').user if self.context.get('request') else None
+        if not user:
+            return None
+            
         try:
             permission = obj.permissions.get(user=user)
             return {
@@ -91,7 +94,6 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         # Kiểm tra dữ liệu đầu vào
-        request = self.context.get('request')
         if self.instance:
             # Kiểm tra nếu project là 'task' và có 'endTime'
             if self.instance.type == 'task' and self.instance.endTime:
@@ -100,9 +102,40 @@ class ProjectSerializer(serializers.ModelSerializer):
                 # Không cho phép đánh dấu hoàn thành sau 'endTime'
                 if new_progress >= 100 and current_time > self.instance.endTime:
                     raise serializers.ValidationError("Không thể đánh dấu hoàn thành sau thời gian kết thúc.")
+                
+            # Add validation for completeTime
+            if 'progress' in data:
+                if data['progress'] >= 100 and not data.get('completeTime'):
+                    data['completeTime'] = timezone.now()
+                elif data['progress'] < 100:
+                    data['completeTime'] = None
+                    
         return data
 
-# If there's a nested serializer or related field that needs 'canFinish', update accordingly
+class RecursiveProjectSerializer(serializers.ModelSerializer):
+    children = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Project
+        fields = ['id', 'title', 'type', 'parent', 'children', 'color']
 
+    def get_children(self, obj):
+        return RecursiveProjectSerializer(obj.get_children(), many=True).data
 
+class RecursiveProjectReportSerializer(ProjectSerializer):
+    children = serializers.SerializerMethodField()
+    managers = serializers.SerializerMethodField()
+    
+    class Meta(ProjectSerializer.Meta):
+        model = Project
+        fields = ProjectSerializer.Meta.fields + ['children', 'managers']
 
+    def get_children(self, obj):
+        return RecursiveProjectReportSerializer(obj.get_children(), many=True, context=self.context).data
+
+    def get_managers(self, obj):
+        return [{
+            "id": manager.id,
+            "username": manager.username,
+            "avatar": manager.userprofile.avatar.url if hasattr(manager, 'userprofile') and manager.userprofile.avatar else None
+        } for manager in obj.managers.all()]
